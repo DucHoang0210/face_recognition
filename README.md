@@ -16,3 +16,22 @@
 ```bash
 git clone https://github.com/USERNAME/face_recognition.git
 cd face_recognition
+```
+
+### 2. Tạo môi trường
+```bash
+python -m venv venv
+venv\Scripts\activate
+```
+
+### 3. Cài thư viện
+```bash
+pip install -r requirements.txt
+```
+
+### 4. Chạy app
+python main.py
+
+### Lưu ý
+Cần bật MySQL (XAMPP)
+Cần chạy Ganache

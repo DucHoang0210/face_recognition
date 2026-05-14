@@ -303,10 +303,17 @@ class LoginFrame(BaseFrame):
 
             img = cv2.cvtColor(frame, cv2.COLOR_BGR2RGB)
             img = Image.fromarray(img).resize((480, 340))
-            imgtk = ImageTk.PhotoImage(img)
-
-            self.cam_label.configure(image=imgtk, text="")
-            self.cam_label._img = imgtk
+            
+            if not getattr(self, '_ui_update_pending', False):
+                self._ui_update_pending = True
+                def update_cam(image=img):
+                    self._ui_update_pending = False
+                    if not self._cam_running:
+                        return
+                    imgtk = ImageTk.PhotoImage(image)
+                    self.cam_label.configure(image=imgtk, text="")
+                    self.cam_label._img = imgtk
+                self.after(0, update_cam)
 
             time.sleep(0.03)
 
@@ -435,9 +442,17 @@ class RegisterFrame(BaseFrame):
                 break
             img = cv2.cvtColor(frame, cv2.COLOR_BGR2RGB)
             img = Image.fromarray(img).resize((480, 340))
-            imgtk = ImageTk.PhotoImage(img)
-            self.cam_label.configure(image=imgtk, text="")
-            self.cam_label._img = imgtk
+            
+            if not getattr(self, '_ui_update_pending', False):
+                self._ui_update_pending = True
+                def update_cam(image=img):
+                    self._ui_update_pending = False
+                    if not self._cam_running:
+                        return
+                    imgtk = ImageTk.PhotoImage(image)
+                    self.cam_label.configure(image=imgtk, text="")
+                    self.cam_label._img = imgtk
+                self.after(0, update_cam)
             time.sleep(0.03)
 
     def _get_username(self):

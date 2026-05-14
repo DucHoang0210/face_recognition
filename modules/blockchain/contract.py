@@ -36,7 +36,6 @@ ABI = [
     }
 ]
 
-# ✅ TẠO HÀM INIT (lazy load)
 def get_contract():
     w3 = Web3(Web3.HTTPProvider("http://127.0.0.1:7545"))
 
