@@ -1,16 +1,13 @@
-import mysql.connector
-from mysql.connector import Error
+import psycopg2
+from psycopg2 import Error
 
-# ================= CONFIG =================
+# ================= CONFIG (PostgreSQL matching Java Spring Boot) =================
 DB_CONFIG = {
     "host": "127.0.0.1",
-    "user": "root",
+    "user": "postgres",
     "password": "123456",
-    "database": "faceid",
-    "port": 3306,
-    "connection_timeout": 5,
-    "autocommit": True,
-    "use_pure": True
+    "database": "faceid_db",
+    "port": 5432
 }
 
 # ================= GLOBAL CONNECTION =================
@@ -23,26 +20,27 @@ def get_connection():
 
     # 👉 Nếu đã có connection thì dùng lại
     try:
-        if conn_global and conn_global.is_connected():
+        if conn_global and not conn_global.closed:
             return conn_global
     except:
         pass
 
-    print("🔌 DB: connecting...")
+    print("🔌 DB: connecting to PostgreSQL...")
 
     try:
-        conn_global = mysql.connector.connect(**DB_CONFIG)
-        print("✅ DB: connected")
+        conn_global = psycopg2.connect(**DB_CONFIG)
+        conn_global.autocommit = True
+        print("✅ DB: connected to PostgreSQL")
         return conn_global
 
     except Error as e:
-        print("❌ Lỗi kết nối MySQL:", e)
+        print("❌ Lỗi kết nối PostgreSQL:", e)
         return None
 
 
 # ================= INIT DB =================
 def init_db():
-    print("🔥 DB: start init")
+    print("🔥 DB: start init (PostgreSQL)")
 
     conn = get_connection()
     if conn is None:
@@ -52,16 +50,22 @@ def init_db():
     try:
         cursor = conn.cursor()
 
+        # Tạo bảng users nếu chưa có (Mặc dù Java Spring Boot (Hibernate) đã tự động sinh)
         cursor.execute("""
         CREATE TABLE IF NOT EXISTS users (
-            id INT AUTO_INCREMENT PRIMARY KEY,
-            username VARCHAR(255) UNIQUE
+            id SERIAL PRIMARY KEY,
+            username VARCHAR(255) UNIQUE NOT NULL,
+            password_hash VARCHAR(255) DEFAULT '',
+            has_face_data BOOLEAN DEFAULT FALSE,
+            wallet_address VARCHAR(255),
+            created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
         )
         """)
 
+        # Tạo bảng images để lưu thông tin ảnh và hash bản quyền
         cursor.execute("""
         CREATE TABLE IF NOT EXISTS images (
-            id INT AUTO_INCREMENT PRIMARY KEY,
+            id SERIAL PRIMARY KEY,
             user_id INT,
             file_path TEXT,
             hash TEXT,
@@ -70,14 +74,14 @@ def init_db():
         )
         """)
 
-        print("🔥 DB: done")
+        print("🔥 DB: done initializing PostgreSQL tables")
 
     except Exception as e:
         print("🔥 DB ERROR:", e)
 
     finally:
         cursor.close()
-        # ❌ KHÔNG close conn_global
+        # ❌ KHÔNG close conn_global để tối ưu hoá kết nối
 
 
 # ================= USER =================
@@ -89,8 +93,9 @@ def save_user(username):
     try:
         cursor = conn.cursor()
 
+        # Dùng ON CONFLICT của PostgreSQL
         cursor.execute(
-            "INSERT IGNORE INTO users(username) VALUES (%s)",
+            "INSERT INTO users(username, password_hash, has_face_data) VALUES (%s, '', false) ON CONFLICT (username) DO NOTHING",
             (username,)
         )
 
@@ -144,15 +149,24 @@ def save_image(username, path, img_hash):
         row = cursor.fetchone()
 
         if not row:
-            print("❌ User không tồn tại")
-            return False
+            # Tạo người dùng mới nếu chưa có
+            user_id = save_user(username)
+            if not user_id:
+                print("❌ User không tồn tại và không thể tạo mới")
+                return False
+        else:
+            user_id = row[0]
 
-        user_id = row[0]
-
+        # Lưu ảnh mới
         cursor.execute("""
             INSERT INTO images(user_id, file_path, hash)
             VALUES (%s, %s, %s)
         """, (user_id, path, img_hash))
+
+        # Đồng thời cập nhật trạng thái đã có FaceID của user
+        cursor.execute("""
+            UPDATE users SET has_face_data = true WHERE id = %s
+        """, (user_id,))
 
         return True
 
