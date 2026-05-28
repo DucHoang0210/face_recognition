@@ -21,6 +21,7 @@ from modules.face.logger import log_login, get_logs
 from modules.image.hash import hash_image
 from modules.image.watermark import add_watermark
 from modules.blockchain.contract import verify_on_chain, register_on_chain
+from modules.blockchain.nft_contract import mint_nft
 from modules.database.db import save_user, save_image, get_images_by_user, init_db
 def recognize_face_lazy(path):
     from modules.face.recognition import recognize_face
@@ -687,6 +688,8 @@ class ImageFrame(BaseFrame):
 
         self._btn(container, "💧 Thêm watermark + Đăng ký", self.register_image, ACCENT).pack(pady=5)
 
+        self._btn(container, "🪙 Mint NFT từ ảnh", self.mint_nft, "#10b981").pack(pady=5)
+
         self._btn(container, "🔍 Kiểm tra ảnh", self.verify_image, ACCENT2).pack(pady=5)
 
         self._btn(container, "📂 Xem ảnh của tôi", self.show_my_images, "#374151").pack(pady=5)
@@ -753,6 +756,52 @@ class ImageFrame(BaseFrame):
             print("Lỗi:", e)
             self.result_label.config(
                 text=f"❌ Lỗi: {str(e)}",
+                fg=DANGER
+            )
+
+    def mint_nft(self):
+        user = self.app.current_user
+        if not user:
+            messagebox.showwarning("Thông báo", "Bạn chưa đăng nhập!")
+            return
+
+        if not self.selected_path:
+            messagebox.showwarning("Thông báo", "Chọn ảnh trước!")
+            return
+
+        dirs = self._get_user_dirs()
+        if dirs is None:
+            return
+
+        img_dir, hash_dir = dirs
+        filename = os.path.basename(self.selected_path)
+        wm_path = os.path.join(img_dir, "wm_" + filename)
+        hash_file = os.path.join(hash_dir, filename + ".txt")
+
+        self.result_label.config(text="Đang chuẩn bị mint NFT...", fg=TEXT_DIM)
+        self.update()
+
+        try:
+            add_watermark(self.selected_path, wm_path, user)
+            img_hash = hash_image(wm_path)
+
+            save_user(user)
+            save_image(user, wm_path, img_hash)
+            register_on_chain(img_hash, user)
+
+            token_uri = f"hash://{img_hash}"
+            receipt = mint_nft(token_uri)
+
+            self.result_label.config(
+                text=(f"✅ NFT đã mint thành công!\n" \
+                      f"Token URI: {token_uri}\n" \
+                      f"TxHash: {receipt.transactionHash.hex()}"),
+                fg=SUCCESS
+            )
+        except Exception as e:
+            print("Lỗi mint NFT:", e)
+            self.result_label.config(
+                text=f"❌ Mint NFT thất bại: {str(e)}",
                 fg=DANGER
             )
 

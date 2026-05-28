@@ -19,7 +19,7 @@ for path in [FACES_DIR, TEMP_DIR,
 DEEPFACE_MODEL = "Facenet"          # Facenet / VGG-Face / ArcFace
 DEEPFACE_DETECTOR = "opencv"        # opencv / retinaface / mtcnn
 DEEPFACE_DISTANCE = "cosine"        # cosine / euclidean
-SIMILARITY_THRESHOLD = 0.40         # Ngưỡng nhận diện (cosine: càng nhỏ càng giống)
+SIMILARITY_THRESHOLD = 0.50         # Ngưỡng nhận diện (cosine: càng nhỏ càng giống, tăng lên để nhạy hơn)
 
 # Cấu hình webcam
 CAMERA_INDEX = 1
