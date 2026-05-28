@@ -1,4 +1,10 @@
 # pyrefly: ignore [missing-import]
+import sys
+import io
+# Configure UTF-8 encoding for standard output and error to support emojis on Windows
+sys.stdout = io.TextIOWrapper(sys.stdout.buffer, encoding='utf-8')
+sys.stderr = io.TextIOWrapper(sys.stderr.buffer, encoding='utf-8')
+
 from fastapi import FastAPI, File, UploadFile, Form
 # pyrefly: ignore [missing-import]
 from fastapi.middleware.cors import CORSMiddleware
